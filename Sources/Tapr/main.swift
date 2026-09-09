@@ -44,12 +44,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         showWindow()
         model.start()
         if let index = CommandLine.arguments.firstIndex(of: "--smoke-test") {
-            DispatchQueue.main.asyncAfter(deadline: .now() + 3) { [self] in
-                if CommandLine.arguments.count > index + 1, let view = window.contentView,
-                   let bitmap = view.bitmapImageRepForCachingDisplay(in: view.bounds) {
-                    view.cacheDisplay(in: view.bounds, to: bitmap)
-                    if let png = bitmap.representation(using: .png, properties: [:]) {
-                        try? png.write(to: URL(fileURLWithPath: CommandLine.arguments[index + 1]))
+            // Optional third argument: seconds to wait before capturing (default 3).
+            let delay = CommandLine.arguments.count > index + 2 ? Double(CommandLine.arguments[index + 2]) ?? 3 : 3
+            DispatchQueue.main.asyncAfter(deadline: .now() + min(max(delay, 1), 60)) { [self] in
+                if CommandLine.arguments.count > index + 1, let view = window.contentView {
+                    // The window capture is the visible page; the scroll view's document is the whole page.
+                    let target = URL(fileURLWithPath: CommandLine.arguments[index + 1])
+                    capture(view, to: target)
+                    if let page = view.firstDescendant(NSScrollView.self)?.documentView {
+                        capture(page, to: target.deletingPathExtension().appendingPathExtension("page.png"))
                     }
                 }
                 print("UI smoke test: \(model.status), \(model.sampleRate) samples/s, actions armed: \(model.armed)")
@@ -58,6 +61,24 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         }
     }
     @objc func showWindow() { window?.makeKeyAndOrderFront(nil); NSApp.activate(ignoringOtherApps: true) }
+    /// Renders a view over the window background colour, so transparent regions stay readable.
+    private func capture(_ view: NSView, to url: URL) {
+        guard let bitmap = view.bitmapImageRepForCachingDisplay(in: view.bounds) else { return }
+        view.cacheDisplay(in: view.bounds, to: bitmap)
+        var background = NSColor.windowBackgroundColor
+        window.effectiveAppearance.performAsCurrentDrawingAppearance {
+            background = NSColor.windowBackgroundColor.usingColorSpace(.deviceRGB) ?? background
+        }
+        let image = NSImage(size: view.bounds.size)
+        image.lockFocus()
+        background.setFill()
+        NSRect(origin: .zero, size: view.bounds.size).fill()
+        bitmap.draw(in: NSRect(origin: .zero, size: view.bounds.size))
+        image.unlockFocus()
+        guard let tiff = image.tiffRepresentation, let rep = NSBitmapImageRep(data: tiff),
+              let png = rep.representation(using: .png, properties: [:]) else { return }
+        try? png.write(to: url)
+    }
     @objc func toggleArmed() {
         guard model.listening, model.sampleRate > 0, model.calibrationSide == nil,
               !model.splitSides || model.calibration.isReady else { return }
@@ -94,4 +115,14 @@ if CommandLine.arguments.contains("--probe") {
     application.setActivationPolicy(.regular)
     application.delegate = delegate
     application.run()
+}
+
+private extension NSView {
+    func firstDescendant<T: NSView>(_ type: T.Type) -> T? {
+        for subview in subviews {
+            if let match = subview as? T { return match }
+            if let found = subview.firstDescendant(type) { return found }
+        }
+        return nil
+    }
 }

@@ -1,7 +1,11 @@
+<img src="docs/icon.png" alt="Tapr icon" width="128" align="right">
+
 # Tapr
 
 A native macOS proof of concept: gently tap the body of your MacBook to run an action.
 Built with SwiftUI/AppKit, a small C/IOKit sensor reader, and no external dependencies.
+
+![Tapr main window: live motion graph, tap actions, tuning and side calibration](docs/screenshot.png)
 
 ## Run
 
@@ -70,6 +74,8 @@ These three mechanisms follow the open-source MacTap detector
   interval. Impacts that follow a triple are dropped until the interval has been
   quiet (`after_triple`), so a fast run of taps never becomes a triple plus a
   single. Singles and doubles still wait for the interval.
+
+![Tuning card with tap strength, interval and typing toggle, and the left/right learning card](docs/screenshot-tuning.png)
 
 ## Optional left/right gestures
 
@@ -166,11 +172,16 @@ Older versions did not log tap decisions, so their unified logs cannot explain
 which detector stage rejected a particular tap. Synthetic test success and a
 healthy sample rate do not establish physical recognition reliability.
 
-For a UI smoke test (renders only Tapr's own content and exits after three seconds):
+For a UI smoke test (renders only Tapr's own content and exits; the optional
+second argument is the delay in seconds, default 3):
 
 ```sh
-./dist/Tapr.app/Contents/MacOS/Tapr --smoke-test /tmp/tapr-preview.png
+./dist/Tapr.app/Contents/MacOS/Tapr --smoke-test /tmp/tapr-preview.png 6
 ```
+
+`docs/screenshot.png` is such a capture. The app icon is rendered from an SF
+Symbol by `scripts/make-icon.sh`, which writes `Resources/AppIcon.icns` and
+`docs/icon.png`; `scripts/build-app.sh` copies the icon into the bundle.
 
 Automated tests cover motion warmup, steady-state noise, damped impacts,
 multiple-tap timing, mixed/unknown/excess tap rejection, state reset, and basic
