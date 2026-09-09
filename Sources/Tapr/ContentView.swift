@@ -208,7 +208,11 @@ private struct SignalGraph: View {
             context.stroke(line, with: .color(.orange.opacity(0.65)), style: StrokeStyle(lineWidth: 1, dash: [4, 4]))
             var path = Path()
             for (i, value) in values.enumerated() {
-                let point = CGPoint(x: size.width * Double(i) / Double(max(1, values.count-1)), y: 6 + height * (1 - min(value / ceiling, 1)))
+                // Split up for the Swift 6.1 type checker, which finds the one-liner ambiguous.
+                let x: Double = size.width * Double(i) / Double(max(1, values.count - 1))
+                let clipped: Double = min(value / ceiling, 1)
+                let y: Double = 6 + height * (1 - clipped)
+                let point = CGPoint(x: x, y: y)
                 if i == 0 { path.move(to: point) } else { path.addLine(to: point) }
             }
             context.stroke(path, with: .color(Color(red: 0.23, green: 0.66, blue: 0.54)), lineWidth: 1.8)
