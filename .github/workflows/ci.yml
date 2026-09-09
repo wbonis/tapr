@@ -21,7 +21,9 @@ jobs:
           codesign --verify --verbose dist/Tapr.app
           plutil -lint dist/Tapr.app/Contents/Info.plist
           # No motion sensor on a runner: the probe must exit 1 cleanly, never crash.
-          ./dist/Tapr.app/Contents/MacOS/Tapr --probe; test $? -le 1
+          status=0
+          ./dist/Tapr.app/Contents/MacOS/Tapr --probe || status=$?
+          test "$status" -le 1
       - name: Log analysis script syntax
         run: python3 -m py_compile scripts/analyze-log.py
       - uses: actions/upload-artifact@v4
