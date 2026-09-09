@@ -7,7 +7,21 @@ Built with SwiftUI/AppKit, a small C/IOKit sensor reader, and no external depend
 
 ![Tapr main window: live motion graph, tap actions, tuning and side calibration](docs/screenshot.png)
 
-## Run
+## Install
+
+Download the latest `Tapr-vX.Y.Z.zip` from
+[Releases](https://github.com/wbonis/tapr/releases), unzip, and move `Tapr.app`
+wherever you like. The build is ad-hoc signed and not notarized: on first launch
+right-click the app and choose Open, or clear the quarantine flag:
+
+```sh
+xattr -dr com.apple.quarantine Tapr.app
+```
+
+Releases are built by GitHub Actions from a `v*` tag
+(`.github/workflows/release.yml`); the tag must match the bundle version.
+
+## Run from source
 
 ```sh
 ./scripts/build-app.sh
