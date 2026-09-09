@@ -1,0 +1,41 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Unit tests
+        run: ./scripts/test.sh
+      - name: Release app bundle
+        run: ./scripts/build-app.sh
+      - name: Check tag against bundle version
+        run: |
+          version=$(plutil -extract CFBundleShortVersionString raw dist/Tapr.app/Contents/Info.plist)
+          test "v$version" = "${GITHUB_REF_NAME}" || { echo "tag ${GITHUB_REF_NAME} != bundle v$version"; exit 1; }
+      - name: Zip
+        run: ditto -c -k --sequesterRsrc --keepParent dist/Tapr.app "Tapr-${GITHUB_REF_NAME}.zip"
+      - name: Publish GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cat > notes.md <<'NOTES'
+          Experimental build for Apple silicon MacBooks that expose the SPU motion sensor (M2 and later, M1 Pro/Max/Ultra), macOS 14 or later.
+
+          The app is ad-hoc signed and not notarized. After unzipping, either right-click Tapr.app and choose Open, or run:
+
+          ```sh
+          xattr -dr com.apple.quarantine Tapr.app
+          ```
+
+          Start with actions disabled and watch the live graph first. See the README for setup, left/right learning, typing suppression and the diagnostics log.
+          NOTES
+          gh release create "${GITHUB_REF_NAME}" "Tapr-${GITHUB_REF_NAME}.zip" \
+            --title "Tapr ${GITHUB_REF_NAME}" --notes-file notes.md --generate-notes --prerelease
